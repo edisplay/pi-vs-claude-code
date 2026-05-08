@@ -1,8 +1,10 @@
 # pi-vs-cc
 
-A collection of [Pi Coding Agent](https://github.com/mariozechner/pi-coding-agent) customized instances. _Why?_ To showcase what it looks like to hedge against the leader in the agentic coding market, Claude Code. Here we showcase how you can customize the UI, agent orchestration tools, safety auditing, and cross-agent integrations. 
+A collection of [Pi Coding Agent](https://github.com/mariozechner/pi-coding-agent) customized instances. _Why?_ To showcase what it looks like to hedge against the leader in the agentic coding market, Claude Code. Here we showcase how you can customize the UI, agent orchestration tools, safety auditing, agent to agent orchestration, and cross-agent integrations. 
 
-> Watch the [video](https://youtu.be/f8cfH5XX-XU) to see pi in action.
+> Want to see these **6+ unique Pi Agent Harnesses in action?** Watch [Pi Coding Agent: The Only Claude Code Competitor](https://youtu.be/f8cfH5XX-XU).
+
+> 🆕 **Pi-to-Pi agent-to-agent communication**. Jump to [Pi-to-Pi Communication](#pi-to-pi-agent-to-agent-communication) or watch [Pi to Pi: Two-Way Agent Orchestration](https://youtu.be/PIdETjcXNIk).
 
 <div align="center">
   <img src="./images/pi-logo.png" alt="pi-vs-cc" width="700">
@@ -86,8 +88,11 @@ bun install
 | **agent-team**          | `extensions/agent-team.ts`          | Dispatcher-only orchestrator: the primary agent delegates all work to named specialist agents via `dispatch_agent`; shows a grid dashboard                 |
 | **system-select**       | `extensions/system-select.ts`       | `/system` command to interactively switch between agent personas/system prompts from `.pi/agents/`, `.claude/agents/`, `.gemini/agents/`, `.codex/agents/` |
 | **damage-control**      | `extensions/damage-control.ts`      | Real-time safety auditing — intercepts dangerous bash patterns and enforces path-based access controls from `.pi/damage-control-rules.yaml`                |
+| **damage-control-continue** | `extensions/damage-control-continue.ts` | Same rules as `damage-control`, but blocked tool calls return actionable feedback instead of aborting — the agent's turn keeps running and can adapt   |
 | **agent-chain**         | `extensions/agent-chain.ts`         | Sequential pipeline orchestrator — chains multiple agents where each step's output feeds into the next step's prompt; use `/chain` to select and run       |
 | **pi-pi**               | `extensions/pi-pi.ts`               | Meta-agent that builds Pi agents using parallel research experts for documentation                                                                         |
+| **coms**                | `extensions/coms.ts`                | Peer-to-peer messaging between Pi agents on the **same machine** over Unix sockets / named pipes. Tools: `coms_list`, `coms_send`, `coms_get`, `coms_await` |
+| **coms-net**            | `extensions/coms-net.ts`            | Networked Pi-to-Pi via a shared HTTP/SSE hub (`scripts/coms-net-server.ts`). Works across machines on a LAN or behind a remote URL. Tools: `coms_net_*`     |
 | **session-replay**      | `extensions/session-replay.ts`      | Scrollable timeline overlay of session history - showcasing customizable dialog UI                                                                         |
 | **theme-cycler**        | `extensions/theme-cycler.ts`        | Keyboard shortcuts (Ctrl+X/Ctrl+Q) and `/theme` command to cycle/switch between custom themes                                                              |
 
@@ -133,11 +138,20 @@ just ext-tilldone           # Task discipline system with live progress tracking
 just ext-agent-team         # Multi-agent orchestration grid dashboard
 just ext-system-select      # Agent persona switcher via /system command
 just ext-damage-control     # Safety auditing + minimal footer
+just ext-damage-control-continue # Same rules, but blocked turns keep running
 just ext-agent-chain        # Sequential pipeline orchestrator with step chaining
 just ext-pi-pi              # Meta-agent that builds Pi agents using parallel experts
 just ext-session-replay     # Scrollable timeline overlay of session history
 just ext-theme-cycler       # Theme cycler + minimal footer
 just all                    # Open every extension in its own terminal window
+
+# Pi-to-Pi communication (see section below)
+just local-coms             # Same-machine peer-to-peer over Unix sockets
+just coms-net-server        # Start a local coms-net HTTP/SSE hub (127.0.0.1)
+just coms-net-server-lan    # Start a LAN-visible hub (requires PI_COMS_NET_AUTH_TOKEN)
+just coms                   # Pi client for the coms-net hub
+just coms1                  # …same, pinned to gpt-5.5
+just coms2                  # …same, pinned to claude-opus-4-7
 ```
 
 The `open` recipe allows you to spin up a new terminal window with any combination of stacked extensions (omit `.ts`):
@@ -196,6 +210,122 @@ Unlike the dynamic dispatcher, `agent-chain` acts as a sequential pipeline orche
 
 ---
 
+## Pi-to-Pi Agent-to-Agent Communication
+
+<div align="center">
+  <img src="./images/01-hero.png" alt="Pi to Pi — Two-Way Agent Communication with the Pi Coding Agent" width="700">
+</div>
+
+> 📺 **Watch:** [Pi to Pi: Two-Way Agent Orchestration with the Pi Coding Agent](https://youtu.be/PIdETjcXNIk)
+
+What's better than one Pi coding agent? Two. What's better than two isolated side-by-side agents? Two agents that **actually talk to each other**. Subagents, dispatch queues, and agent chains all share one shape: information flows in **one direction** down a hierarchy. `coms` and `coms-net` add the missing pattern — **two equal Pi agents that talk to each other peer-to-peer**, on the same machine or across the network. No orchestrator, no parent/child relationship, no information loss as work travels through layers. The best idea wins, regardless of which agent had it.
+
+<div align="center">
+  <img src="./images/08-the-shift.png" alt="The shift: agents as equals, not parent/child — prompt and response both ways" width="700">
+</div>
+
+This is the shift. Sub-agent delegation and message queues are powerful patterns, but every one of them moves information in basically one direction. Even when results come back, it's a one-way stream — top-down. Peer-to-peer flips it: prompt → response → prompt → response, between agents who are **equals, not parent and child**. That unlocks bidirectional flows of information by default.
+
+**Why this matters in practice:**
+- **Cross-device work.** A production agent on one box, a dev agent on your laptop. The prod side keeps PII redacted while still answering the dev side's questions — real engineering work, no data leak.
+- **Heterogeneous teams.** Run `claude-opus-4-7` and `gpt-5.5` and `deepseek` in the same pool. Each model has different RL training; together they catch what either misses alone.
+- **Focused context windows.** Each agent stays specialised on its slice instead of one bloated agent juggling every concern. A focused agent is a performant agent — the more unrelated problems you stuff into one context window, the higher your error rate climbs.
+- **Flat composition.** It's still just an agent + extension. You can compose this back into an orchestrator pattern when you want top-down, or keep it flat when you don't.
+
+<div align="center">
+  <img src="./images/27-flat-org-info-over-titles.png" alt="Hierarchy loses — valuable information over titles and politics — ideas die in hierarchies" width="700">
+</div>
+
+The deeper reason this pattern matters: **the best information is almost always on the worker level**, but in a hierarchy it has to climb several layers (and survive several rewrites) before it shapes a decision. Flat structures let valuable information win on its own merit. The same dynamic plays out in agent systems — the agent closest to the artifact (the production database, the running test, the live file) usually has the sharpest view. Letting it speak directly to its peers, rather than routing every signal through an orchestrator, keeps that signal intact.
+
+### Two versions
+
+| | `coms` (local) | `coms-net` (networked) |
+| --- | --- | --- |
+| **Transport** | Unix sockets / Windows named pipes | HTTP + Server-Sent Events |
+| **Scope** | One machine | Same machine, LAN, or remote URL |
+| **Discovery** | File registry at `~/.pi/coms/projects/<project>/agents/*.json` | Shared hub at `~/.pi/coms-net/projects/<project>/server.json` |
+| **Server** | None — agents listen directly | `bun scripts/coms-net-server.ts` (Bun HTTP hub) |
+| **Tools** | `coms_list`, `coms_send`, `coms_get`, `coms_await` | `coms_net_list`, `coms_net_send`, `coms_net_get`, `coms_net_await` |
+| **Widget** | Live pool above the editor | Live pool above the editor |
+| **Auth** | OS file perms on `~/.pi/coms/` | `PI_COMS_NET_AUTH_TOKEN` (auto-generated for localhost, required for LAN/remote) |
+
+### Tool surface — four tools, zero magic
+
+<div align="center">
+  <img src="./images/14-four-tools.png" alt="Four tools, zero magic — coms_list discovers peers, coms_send prompts one, coms_get polls, coms_await blocks for the response" width="700">
+</div>
+
+The entire surface area is four tools. List the agents on the network, send them a prompt, then either poll (non-blocking) or block until the response lands. That's it.
+
+| Tool | What it does |
+| --- | --- |
+| `*_list` | List peer agents in the pool with names, models, and live context-window usage |
+| `*_send` | Send a prompt to a peer; returns a `msg_id` once the receiver acks |
+| `*_get` | Non-blocking poll on `msg_id` — `pending` / `complete` / `error` |
+| `*_await` | Block until the reply lands or a timeout fires (default 30 min via `PI_COMS_*_TIMEOUT_MS`) |
+
+A reply travels back through the same channel: when an inbound prompt triggers a turn, the receiver's final assistant message is automatically packaged as the response. Sometimes you want fire-and-forget (a Slack-style status ping); sometimes you want to wait for the answer (`*_await`); sometimes you want to keep working and check back later (`*_get`). All three styles fall out of the same four primitives.
+
+### Quick start — same-machine (`coms`)
+
+```bash
+# Terminal 1
+just local-coms --name planner --purpose "Plans the work" --color "#36F9F6"
+
+# Terminal 2
+just local-coms --name coder   --purpose "Writes the code" --color "#FF7EDB"
+```
+
+Each agent shows a live pool widget of the others. From either side, the agent can call `coms_send` with `target: "planner"` (or `"coder"`), then `coms_await` for the reply.
+
+### Quick start — networked (`coms-net`)
+
+<div align="center">
+  <img src="./images/21-scale-2.png" alt="coms-net — peer-to-peer across devices — planner @laptop and coder @m4 connected via the hub" width="700">
+</div>
+
+`coms-net` is the same idea over HTTP/SSE. Now `planner` can live on your laptop and `coder` can live on a Mac Mini, an EU production box, or a remote VM — they meet through a shared hub. The agent on the sensitive side stays on the sensitive side; only the messages cross the wire. Same four tools, just `coms_net_*`-prefixed.
+
+```bash
+# Terminal 1 — hub
+just coms-net-server                # binds 127.0.0.1, OS-claimed port
+# or
+just coms-net-server-lan            # binds 0.0.0.0 — requires PI_COMS_NET_AUTH_TOKEN
+
+# Terminal 2 & 3 — clients (auto-discover server.json)
+just coms  --name dev
+just coms2 --name prod              # …pinned to claude-opus-4-7
+
+# Or different models per seat: coms1=gpt-5.5, coms2=opus-4-7, coms3=deepseek, coms4=glm
+just coms1 --name researcher
+just coms3 --name verifier
+```
+
+For remote / cross-LAN: set `PI_COMS_NET_SERVER_URL` and `PI_COMS_NET_AUTH_TOKEN` in `.env` (template in `.env.sample`). Front the hub with TLS for anything beyond a trusted LAN.
+
+### Safety rails baked in
+
+- **Hop limit** — every prompt envelope carries `hops`; default `MAX_HOPS=5` (`PI_COMS_MAX_HOPS`/`PI_COMS_NET_MAX_HOPS`). Stops runaway A→B→A→B forwarding loops.
+- **Audit log** — every send/receive appends to `coms-log` / `coms-net-log` (msg_id, sender, hops only — never prompt bodies).
+- **Self-heal** — `coms` probes for stale sockets and prunes dead PIDs on every list; `coms-net` heartbeats every 10s and marks peers `stale`/`offline` on miss.
+- **Localhost-by-default** — the hub refuses to bind anything other than `127.0.0.1` unless `PI_COMS_NET_AUTH_TOKEN` is set explicitly.
+
+### Trade-offs (be honest about both sides)
+
+**Pros**
+- Bidirectional. Information moves both ways, not down a hierarchy.
+- Flat. No "lead agent" — the best information wins on merit, not title.
+- Just an agent. Spin one up, kill it, add another — no resume, no spin-up dance.
+- Heterogeneous. Mix providers and models in a single conversation pool.
+
+**Cons**
+- You build and prompt-engineer the protocol. Sloppy prompts → A→B→A loops.
+- Cost scales linearly with agent count plus the bounce factor. Three good agents beats ten noisy ones.
+- For some shapes of work an orchestrator is still the right tool. This isn't a replacement for `agent-team` or `agent-chain` — it's a different primitive you compose alongside them.
+
+---
+
 ## Safety Auditing & Damage Control
 
 The `damage-control` extension provides real-time security hooks to prevent catastrophic mistakes when agents execute bash commands or modify files. It uses Pi's `tool_call` event to intercept and evaluate every action against `.pi/damage-control-rules.yaml`.
@@ -204,6 +334,8 @@ The `damage-control` extension provides real-time security hooks to prevent cata
 - **Zero Access Paths**: Prevents the agent from reading or writing sensitive files (e.g., `.env`, `~/.ssh/`, `*.pem`).
 - **Read-Only Paths**: Allows reading but blocks modifying system files or lockfiles (`package-lock.json`, `/etc/`).
 - **No-Delete Paths**: Allows modifying but prevents deleting critical project configuration (`.git/`, `Dockerfile`, `README.md`).
+
+For a "soft" variant that lets the agent keep working after a block (turn continues with actionable feedback instead of aborting), use [`damage-control-continue`](extensions/damage-control-continue.ts).
 
 ---
 
@@ -260,6 +392,12 @@ Side-by-side comparison of lifecycle hooks in [Claude Code](https://docs.anthrop
 | [settings.md](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/settings.md)     | Configuration                      |
 | [compaction.md](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/compaction.md) | Context compaction                 |
 
+
+## License
+
+Released under the [MIT License](LICENSE) — fork it, ship it, use it however helps you build.
+
+---
 
 ## Master Agentic Coding
 > Prepare for the future of software engineering

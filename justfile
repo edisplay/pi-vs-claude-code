@@ -3,6 +3,16 @@ set dotenv-load := true
 default:
     @just --list
 
+# prime
+
+# Launch Claude Code and run /prime
+primecc:
+    claude --dangerously-skip-permissions --model "opus[1m]" "/prime"
+
+# Launch Pi and run /prime
+primepi:
+    pi "/prime"
+
 # g1
 
 # 1. default pi
@@ -55,6 +65,10 @@ ext-system-select:
 ext-damage-control:
     pi -e extensions/damage-control.ts -e extensions/minimal.ts -e extensions/theme-cycler.ts
 
+# 12b. Damage-Control (continue): same rules, but blocked turns keep running with actionable feedback
+ext-damage-control-continue:
+    pi -e extensions/damage-control-continue.ts -e extensions/minimal.ts -e extensions/theme-cycler.ts
+
 # 13. Agent chain: sequential pipeline orchestrator
 ext-agent-chain:
     pi -e extensions/agent-chain.ts -e extensions/theme-cycler.ts
@@ -64,8 +78,6 @@ ext-agent-chain:
 # 14. Pi Pi: meta-agent that builds Pi agents with parallel expert research
 ext-pi-pi:
     pi -e extensions/pi-pi.ts -e extensions/theme-cycler.ts
-
-#ext
 
 # 15. Session Replay: scrollable timeline overlay of session history (legit)
 ext-session-replay:
@@ -105,3 +117,43 @@ all:
     just open damage-control minimal theme-cycler
     just open agent-chain theme-cycler
     just open pi-pi theme-cycler
+
+# ------------------------ coms + coms-net (HTTP/SSE hub) ------------------------
+
+# Coms: peer-to-peer, same machine messaging between Pi agents
+# Pass any pi/extension flags through, e.g.: just ext-coms --name dev --color "#72F1B8"
+local-coms *args:
+    pi -e extensions/coms.ts -e extensions/minimal.ts -e extensions/theme-cycler.ts {{args}}
+
+# Start a local coms-net server (binds 127.0.0.1, OS-claimed port)
+# Auto-kills any stale process holding the pinned port first.
+coms-net-server:
+    -lsof -ti :${PI_COMS_NET_PORT:-52965} | xargs -r kill -TERM 2>/dev/null
+    bun scripts/coms-net-server.ts
+
+# Start a LAN-visible coms-net server (binds 0.0.0.0, requires PI_COMS_NET_AUTH_TOKEN)
+# Auto-kills any stale process holding the pinned port first.
+coms-net-server-lan:
+    -lsof -ti :${PI_COMS_NET_PORT:-52965} | xargs -r kill -TERM 2>/dev/null
+    PI_COMS_NET_HOST=0.0.0.0 bun scripts/coms-net-server.ts
+
+# Pi with networked coms client (auto-discovers local server.json)
+# Pass any flags through, e.g.: just ext-coms-net --name dev --server-url http://… --auth-token …
+coms *args:
+    pi -e extensions/coms-net.ts -e extensions/minimal.ts -e extensions/theme-cycler.ts {{args}}
+
+# coms-net with gpt-5.5 (extra args still pass through, e.g. --name dev)
+coms1 *args:
+    pi -e extensions/coms-net.ts -e extensions/minimal.ts -e extensions/theme-cycler.ts --provider openai --model gpt-5.5 {{args}}
+
+# coms-net with claude-opus-4-7
+coms2 *args:
+    pi -e extensions/coms-net.ts -e extensions/minimal.ts -e extensions/theme-cycler.ts --model claude-opus-4-7 {{args}}
+
+# coms-net with deepseek/deepseek-v4-pro
+coms3 *args:
+    pi -e extensions/coms-net.ts -e extensions/minimal.ts -e extensions/theme-cycler.ts --model deepseek/deepseek-v4-pro {{args}}
+
+# coms-net with z-ai/glm-5.1
+coms4 *args:
+    pi -e extensions/coms-net.ts -e extensions/minimal.ts -e extensions/theme-cycler.ts --model z-ai/glm-5.1 {{args}}
